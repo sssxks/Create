@@ -240,7 +240,6 @@ public class ThresholdSwitchBlockEntity extends SmartBlockEntity {
 			update ? 3 : 2);
 
 		if (update)
-
 			scheduleBlockTick();
 
 		if (levelChanged || update)
