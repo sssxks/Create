@@ -67,7 +67,7 @@ public class ThresholdSwitchScreen extends AbstractSimiScreen {
 			.forOptions(List.of(CreateLang.translateDirect("schedule.condition.threshold.items"),
 				CreateLang.translateDirect("schedule.condition.threshold.stacks")))
 			.titled(CreateLang.translateDirect("schedule.condition.threshold.item_measure"))
-			.calling((state) -> send(!blockEntity.isInverted()))
+			.calling((state) -> send(blockEntity.isInverted()))
 			.setState(blockEntity.inStacks ? 1 : 0);
 
 		offBelow = new ScrollInput(x + 48, y + 47, 1, 18)

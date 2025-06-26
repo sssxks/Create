@@ -40,7 +40,6 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 
 public class ThresholdSwitchBlockEntity extends SmartBlockEntity {
-
 	public int onWhenAbove;
 	public int offWhenBelow;
 
@@ -126,7 +125,6 @@ public class ThresholdSwitchBlockEntity extends SmartBlockEntity {
 	}
 
 	public void updateCurrentLevel() {
-		boolean changed = false;
 		int prevLevel = currentLevel;
 		int prevMaxLevel = currentMaxLevel;
 
@@ -214,12 +212,13 @@ public class ThresholdSwitchBlockEntity extends SmartBlockEntity {
 		}
 
 		currentLevel = Mth.clamp(currentLevel, currentMinLevel, currentMaxLevel);
-		changed = currentLevel != prevLevel;
+		boolean levelChanged = currentLevel != prevLevel;
+		boolean anyChanged = levelChanged || prevMaxLevel != currentMaxLevel;
 
 		boolean previouslyPowered = redstoneState;
-		if (redstoneState && currentLevel <= offWhenBelow)
+		if (currentLevel <= offWhenBelow)
 			redstoneState = false;
-		else if (!redstoneState && currentLevel >= onWhenAbove)
+		else if (currentLevel >= onWhenAbove)
 			redstoneState = true;
 		boolean update = previouslyPowered != redstoneState;
 
@@ -231,13 +230,13 @@ public class ThresholdSwitchBlockEntity extends SmartBlockEntity {
 			update ? 3 : 2);
 
 		if (update)
-
 			scheduleBlockTick();
 
-		if (changed || update) {
+		if (levelChanged || update)
 			DisplayLinkBlock.notifyGatherers(level, worldPosition);
+
+		if (anyChanged)
 			notifyUpdate();
-		}
 	}
 
 	private boolean isSuitableInventory(BlockEntity be) {
