@@ -714,7 +714,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 	private InventorySummary getRelevantSummary() {
 		FactoryPanelBlockEntity panelBE = panelBE();
 		if (!panelBE.restocker)
-			return LogisticsManager.getSummaryOfNetwork(network, false);
+			return LogisticsManager.getSummaryOfNetwork(network, true);
 		PackagerBlockEntity packager = panelBE.getRestockedPackager();
 		if (packager == null)
 			return InventorySummary.EMPTY;
