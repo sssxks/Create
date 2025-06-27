@@ -38,7 +38,7 @@ public class ConfigureThresholdSwitchPacket extends BlockEntityConfigurationPack
 		be.offWhenBelow = offBelow;
 		be.onWhenAbove = onAbove;
 		be.setInverted(invert);
-		be.inStacks = inStacks;
+		be.setInStacks(inStacks);
 	}
 
 	@Override
