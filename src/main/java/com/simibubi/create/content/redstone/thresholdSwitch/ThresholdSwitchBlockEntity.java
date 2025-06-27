@@ -157,8 +157,7 @@ public class ThresholdSwitchBlockEntity extends SmartBlockEntity {
 				for (int slot = 0; slot < inv.getSlots(); slot++) {
 					ItemStack stackInSlot = inv.getStackInSlot(slot);
 
-
-					long space ;
+					long space;
 					if (compatibilityHandler.isPresent()){
 						space = compatibilityHandler.get().getSpaceInSlot(inv, slot);
 					} else {
