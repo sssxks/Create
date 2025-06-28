@@ -19,7 +19,6 @@ public class CreateLang extends Lang {
 	/**
 	 * legacy-ish. Use CreateLang.translate and other builder methods where possible
 	 *
-
 	 */
 	public static MutableComponent translateDirect(String key, Object... args) {
         Object[] args1 = LangBuilder.resolveBuilders(args);
