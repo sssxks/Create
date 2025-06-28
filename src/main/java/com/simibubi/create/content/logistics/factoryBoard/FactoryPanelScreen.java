@@ -105,7 +105,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 		BigItemStack emptyIngredient = new BigItemStack(ItemStack.EMPTY, 1);
 		NonNullList<Ingredient> ingredients = availableCraftingRecipe.getIngredients();
 		List<BigItemStack> mutableInputs = BigItemStack.duplicateWrappers(inputs);
-		
+
 		int width = Math.min(3, ingredients.size());
 		int height = Math.min(3, ingredients.size() / 3 + 1);
 
@@ -132,7 +132,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 							bigItemStack.count -= 1;
 						break;
 					}
-			
+
 			craftingIngredients.add(craftingIngredient);
 
 			if (width < 3 && (i + 1) % width == 0)
@@ -612,7 +612,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 				if (itemStack.stack.isEmpty())
 					return true;
 				itemStack.count =
-					Mth.clamp((int) (itemStack.count + Math.signum(scrollY) * (hasShiftDown() ? 10 : 1)), 1, 64);
+					Mth.clamp((int) (itemStack.count + Math.signum(scrollY) * (hasShiftDown() ? 10 : 1)), 1, itemStack.stack.getMaxStackSize() * 9);
 				return true;
 			}
 		}
@@ -623,7 +623,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 			if (mouseX >= outputX && mouseX < outputX + 16 && mouseY >= outputY && mouseY < outputY + 16) {
 				BigItemStack itemStack = outputConfig;
 				itemStack.count =
-					Mth.clamp((int) (itemStack.count + Math.signum(scrollY) * (hasShiftDown() ? 10 : 1)), 1, 64);
+					Mth.clamp((int) (itemStack.count + Math.signum(scrollY) * (hasShiftDown() ? 10 : 1)), 1, itemStack.stack.getMaxStackSize() * 9);
 				return true;
 			}
 		}
