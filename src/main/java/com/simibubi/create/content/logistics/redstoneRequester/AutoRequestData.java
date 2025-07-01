@@ -18,19 +18,19 @@ import net.minecraft.world.level.Level;
 public record AutoRequestData(PackageOrderWithCrafts encodedRequest, String encodedTargetAddress, BlockPos targetOffset, String targetDim, boolean isValid) {
 	
 	public static final Codec<AutoRequestData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-		PackageOrderWithCrafts.CODEC.fieldOf("encoded_request").forGetter(i -> i.encodedRequest),
-		Codec.STRING.fieldOf("encoded_target_address").forGetter(i -> i.encodedTargetAddress),
-		BlockPos.CODEC.fieldOf("target_offset").forGetter(i -> i.targetOffset),
-		Codec.STRING.fieldOf("target_dim").forGetter(i -> i.targetDim),
-		Codec.BOOL.fieldOf("is_valid").forGetter(i -> i.isValid)
+		PackageOrderWithCrafts.CODEC.fieldOf("encoded_request").forGetter(AutoRequestData::encodedRequest),
+		Codec.STRING.fieldOf("encoded_target_address").forGetter(AutoRequestData::encodedTargetAddress),
+		BlockPos.CODEC.fieldOf("target_offset").forGetter(AutoRequestData::targetOffset),
+		Codec.STRING.fieldOf("target_dim").forGetter(AutoRequestData::targetDim),
+		Codec.BOOL.fieldOf("is_valid").forGetter(AutoRequestData::isValid)
 	).apply(instance, AutoRequestData::new));
 
 	public static final StreamCodec<RegistryFriendlyByteBuf, AutoRequestData> STREAM_CODEC = StreamCodec.composite(
-		PackageOrderWithCrafts.STREAM_CODEC, i -> i.encodedRequest,
-		ByteBufCodecs.STRING_UTF8, i -> i.encodedTargetAddress,
-	    BlockPos.STREAM_CODEC, i -> i.targetOffset,
-	    ByteBufCodecs.STRING_UTF8, i -> i.targetDim,
-	    ByteBufCodecs.BOOL, i -> i.isValid,
+		PackageOrderWithCrafts.STREAM_CODEC, AutoRequestData::encodedRequest,
+		ByteBufCodecs.STRING_UTF8, AutoRequestData::encodedTargetAddress,
+	    BlockPos.STREAM_CODEC, AutoRequestData::targetOffset,
+	    ByteBufCodecs.STRING_UTF8, AutoRequestData::targetDim,
+	    ByteBufCodecs.BOOL, AutoRequestData::isValid,
 	    AutoRequestData::new
 	);
 
@@ -78,11 +78,11 @@ public record AutoRequestData(PackageOrderWithCrafts encodedRequest, String enco
 		}
 
 		public Mutable(AutoRequestData data) {
-			encodedRequest = data.encodedRequest;
-			encodedTargetAddress = data.encodedTargetAddress;
-			targetOffset = data.targetOffset;
-			targetDim = data.targetDim;
-			isValid = data.isValid;
+			encodedRequest = data.encodedRequest();
+			encodedTargetAddress = data.encodedTargetAddress();
+			targetOffset = data.targetOffset();
+			targetDim = data.targetDim();
+			isValid = data.isValid();
 		}
 
 		public AutoRequestData toImmutable() {

@@ -115,6 +115,10 @@ public class PackageItem extends Item {
 		box.set(AllDataComponents.PACKAGE_ORDER_DATA, order);
 	}
 
+	public static boolean hasFragmentData(ItemStack box) {
+		return box.has(AllDataComponents.PACKAGE_ORDER_DATA);
+	}
+
 	public static int getOrderId(ItemStack box) {
 		if (box.has(AllDataComponents.PACKAGE_ORDER_DATA)) {
 			//noinspection DataFlowIssue
@@ -124,6 +128,47 @@ public class PackageItem extends Item {
 		}
 	}
 
+	public static int getIndex(ItemStack box) {
+		if (box.has(AllDataComponents.PACKAGE_ORDER_DATA)) {
+			//noinspection DataFlowIssue
+			return box.get(AllDataComponents.PACKAGE_ORDER_DATA).fragmentIndex();
+		} else {
+			return -1;
+		}
+	}
+
+	public static boolean isFinal(ItemStack box) {
+		if (box.has(AllDataComponents.PACKAGE_ORDER_DATA)) {
+			//noinspection DataFlowIssue
+			return box.get(AllDataComponents.PACKAGE_ORDER_DATA).isFinal();
+		} else {
+			return false;
+		}
+	}
+
+	public static int getLinkIndex(ItemStack box) {
+		if (box.has(AllDataComponents.PACKAGE_ORDER_DATA)) {
+			//noinspection DataFlowIssue
+			return box.get(AllDataComponents.PACKAGE_ORDER_DATA).linkIndex();
+		} else {
+			return -1;
+		}
+	}
+
+	public static boolean isFinalLink(ItemStack box) {
+		if (box.has(AllDataComponents.PACKAGE_ORDER_DATA)) {
+			//noinspection DataFlowIssue
+			return box.get(AllDataComponents.PACKAGE_ORDER_DATA).isFinalLink();
+		} else {
+			return false;
+		}
+	}
+
+	@Nullable
+	/**
+	 * Ordered items and their amount in the original, combined request\n
+	 * (Present in all non-redstone packages)
+	 */
 	public static PackageOrderWithCrafts getOrderContext(ItemStack box) {
 		if (box.has(AllDataComponents.PACKAGE_ORDER_DATA)) {
 			PackageOrderData data = box.get(AllDataComponents.PACKAGE_ORDER_DATA);

@@ -13,6 +13,8 @@ import com.simibubi.create.AllBlockEntityTypes;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.Create;
+import com.simibubi.create.compat.computercraft.AbstractComputerBehaviour;
+import com.simibubi.create.compat.computercraft.ComputerCraftProxy;
 import com.simibubi.create.api.packager.unpacking.UnpackingHandler;
 import com.simibubi.create.content.contraptions.actors.psi.PortableStorageInterfaceBlockEntity;
 import com.simibubi.create.content.logistics.BigItemStack;
@@ -22,6 +24,7 @@ import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBehaviour;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlock;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlockEntity;
 import com.simibubi.create.content.logistics.packagePort.frogport.FrogportBlockEntity;
+import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour.RequestType;
 import com.simibubi.create.content.logistics.packagerLink.PackagerLinkBlock;
 import com.simibubi.create.content.logistics.packagerLink.PackagerLinkBlockEntity;
@@ -57,12 +60,15 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.common.util.LazyOptional;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.neoforged.neoforge.items.ItemStackHandler;
+import net.neoforged.neoforge.capabilities.ICapabilityProvider;
+import net.neoforged.neoforge.capabilities.Capability;
+
 
 public class PackagerBlockEntity extends SmartBlockEntity {
 
@@ -77,10 +83,15 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 	public List<BigItemStack> queuedExitingPackages;
 
 	public final PackagerItemHandler inventory;
+	private net.neoforged.neoforge.common.util.LazyOptional<IItemHandler> invProvider;
 
 	public static final int CYCLE = 20;
 	public int animationTicks;
 	public boolean animationInward;
+
+	public AbstractComputerBehaviour computerBehaviour;
+	public Boolean hasCustomComputerAddress;
+	public String customComputerAddress;
 
 	private InventorySummary availableItems;
 	private VersionedInventoryTrackerBehaviour invVersionTracker;
@@ -96,10 +107,13 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 		heldBox = ItemStack.EMPTY;
 		previouslyUnwrapped = ItemStack.EMPTY;
 		inventory = new PackagerItemHandler(this);
+		invProvider = net.neoforged.neoforge.common.util.LazyOptional.of(() -> inventory);
 		animationTicks = 0;
 		animationInward = true;
 		queuedExitingPackages = new LinkedList<>();
 		signBasedAddress = "";
+		customComputerAddress = "";
+		hasCustomComputerAddress = false;
 		buttonCooldown = 0;
 	}
 
@@ -117,6 +131,7 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 			.withFilter(this::supportsBlockEntity));
 		behaviours.add(invVersionTracker = new VersionedInventoryTrackerBehaviour(this));
 		behaviours.add(advancements = new AdvancementBehaviour(this, AllAdvancements.PACKAGER));
+		behaviours.add(computerBehaviour = ComputerCraftProxy.behaviour(this));
 	}
 
 	private boolean supportsBlockEntity(BlockEntity target) {
@@ -233,7 +248,8 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 					continue;
 				if (!(level.getBlockEntity(worldPosition.relative(d)) instanceof PackagerLinkBlockEntity plbe))
 					continue;
-				UUID freqId = plbe.behaviour.freqId;
+				LogisticallyLinkedBehaviour linkBehaviour = plbe.getBehaviour(LogisticallyLinkedBehaviour.TYPE);
+				UUID freqId = linkBehaviour.freqId;
 				if (!Create.LOGISTICS.hasQueuedPromises(freqId))
 					continue;
 				promiseQueues.add(Create.LOGISTICS.getQueuedPromises(freqId));
@@ -488,8 +504,11 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 
 		BlockPos linkPos = getLinkPos();
 		if (extractedPackageItem.isEmpty() && linkPos != null
-			&& level.getBlockEntity(linkPos) instanceof PackagerLinkBlockEntity plbe)
-			plbe.behaviour.deductFromAccurateSummary(extractedItems);
+			&& level.getBlockEntity(linkPos) instanceof PackagerLinkBlockEntity plbe) {
+			LogisticallyLinkedBehaviour linkBehaviour = plbe.getBehaviour(LogisticallyLinkedBehaviour.TYPE);
+			linkBehaviour.deductFromAccurateSummary(extractedItems);
+		}
+
 
 		if (!heldBox.isEmpty() || animationTicks != 0) {
 			queuedExitingPackages.add(new BigItemStack(createdBox, 1));
@@ -505,13 +524,18 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 		notifyUpdate();
 	}
 
-	protected void updateSignAddress() {
+	public void updateSignAddress() {
 		signBasedAddress = "";
 		for (Direction side : Iterate.directions) {
 			String address = getSign(side);
 			if (address == null || address.isBlank())
 				continue;
 			signBasedAddress = address;
+		}
+		if (computerBehaviour.hasAttachedComputer() && hasCustomComputerAddress) {
+			signBasedAddress = customComputerAddress;
+		} else {
+			hasCustomComputerAddress = false;
 		}
 	}
 
@@ -545,6 +569,8 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 		animationInward = compound.getBoolean("AnimationInward");
 		animationTicks = compound.getInt("AnimationTicks");
 		signBasedAddress = compound.getString("SignAddress");
+		customComputerAddress = compound.getString("ComputerAddress");
+		hasCustomComputerAddress = compound.getBoolean("HasComputerAddress");
 		heldBox = ItemStack.parseOptional(registries, compound.getCompound("HeldBox"));
 		previouslyUnwrapped = ItemStack.parseOptional(registries, compound.getCompound("InsertedBox"));
 		if (clientPacket)
@@ -564,6 +590,8 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 		compound.putBoolean("AnimationInward", animationInward);
 		compound.putInt("AnimationTicks", animationTicks);
 		compound.putString("SignAddress", signBasedAddress);
+		compound.putString("ComputerAddress", customComputerAddress);
+		compound.putBoolean("HasComputerAddress", hasCustomComputerAddress);
 		compound.put("HeldBox", heldBox.saveOptional(registries));
 		compound.put("InsertedBox", previouslyUnwrapped.saveOptional(registries));
 		if (clientPacket)
@@ -589,6 +617,14 @@ public class PackagerBlockEntity extends SmartBlockEntity {
 					bigStack.stack.copy());
 		});
 		queuedExitingPackages.clear();
+	}
+
+	public <T> net.neoforged.neoforge.common.util.LazyOptional<T> getCapability(net.neoforged.neoforge.capabilities.Capability<T> cap, Direction side) {
+		if (cap == Capabilities.ItemHandler.BLOCK)
+			return invProvider.cast();
+		if (computerBehaviour.isPeripheralCap(cap))
+			return computerBehaviour.getPeripheralCapability();
+		return super.getCapability(cap, side);
 	}
 
 	public float getTrayOffset(float partialTicks) {

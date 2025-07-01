@@ -1,18 +1,24 @@
 package com.simibubi.create.content.logistics.packagePort.postbox;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 
 import com.simibubi.create.AllBlockEntityTypes;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.Create;
+import com.simibubi.create.compat.computercraft.AbstractComputerBehaviour;
+import com.simibubi.create.compat.computercraft.ComputerCraftProxy;
 import com.simibubi.create.content.logistics.packagePort.PackagePortBlockEntity;
 import com.simibubi.create.content.trains.station.GlobalStation;
 import com.simibubi.create.content.trains.station.GlobalStation.GlobalPackagePort;
+
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.sounds.SoundEvents;
@@ -23,6 +29,10 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.common.util.LazyOptional;
+import net.neoforged.neoforge.capabilities.Capability;
+
+import org.jetbrains.annotations.NotNull;
 
 public class PostboxBlockEntity extends PackagePortBlockEntity {
 
@@ -32,6 +42,8 @@ public class PostboxBlockEntity extends PackagePortBlockEntity {
 	public boolean forceFlag;
 
 	private boolean sendParticles;
+
+	public AbstractComputerBehaviour computerBehaviour;
 
 	public PostboxBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
@@ -46,6 +58,18 @@ public class PostboxBlockEntity extends PackagePortBlockEntity {
 			AllBlockEntityTypes.PACKAGE_POSTBOX.get(),
 			(be, context) -> be.itemHandler
 		);
+	}
+
+	public <T> net.neoforged.neoforge.common.util.LazyOptional<T> getCapability(net.neoforged.neoforge.capabilities.Capability<T> cap, Direction side) {
+		if (computerBehaviour.isPeripheralCap(cap))
+			return computerBehaviour.getPeripheralCapability();
+		return super.getCapability(cap, side);
+	}
+
+	@Override
+	public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
+		behaviours.add(computerBehaviour = ComputerCraftProxy.behaviour(this));
+		super.addBehaviours(behaviours);
 	}
 
 	@Override
@@ -120,6 +144,12 @@ public class PostboxBlockEntity extends PackagePortBlockEntity {
 		globalPackagePort.primed = true;
 		Create.RAILWAYS.markTracksDirty();
 		super.onChunkUnloaded();
+	}
+
+	@Override
+	public void invalidateCaps() {
+		super.invalidateCaps();
+		computerBehaviour.removePeripheral();
 	}
 
 }
