@@ -13,6 +13,8 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import net.minecraft.util.Mth;
+
 import org.jetbrains.annotations.NotNull;
 import org.joml.Math;
 
@@ -39,6 +41,7 @@ import com.simibubi.create.content.logistics.packagerLink.RequestPromise;
 import com.simibubi.create.content.logistics.packagerLink.RequestPromiseQueue;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrder;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
+import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts.CraftingEntry;
 import com.simibubi.create.content.schematics.requirement.ItemRequirement;
 import com.simibubi.create.foundation.advancement.AllAdvancements;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -102,6 +105,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 	public boolean waitingForNetwork;
 	public String recipeAddress;
 	public int recipeOutput;
+	public int recipeOutputPerCraft = 1;
 	public LerpedFloat bulb;
 	public PanelSlot slot;
 	public int promiseClearingInterval;
@@ -420,7 +424,8 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 				return;
 
 			ItemStack item = source.getFilter();
-			int amount = connection.amount;
+			int craftsRequested = Math.max(1, Mth.positiveCeilDiv(recipeOutput, recipeOutputPerCraft));
+			int amount = connection.amount * craftsRequested;
 			InventorySummary summary = LogisticsManager.getSummaryOfNetwork(source.network, true);
 			if (amount == 0 || item.isEmpty() || summary.getCountOf(item) < amount) {
 				sendEffect(connection.from, false);
@@ -443,10 +448,14 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		List<Multimap<PackagerBlockEntity, PackagingRequest>> requests = new ArrayList<>();
 
 		// Panel may enforce item arrangement
-		if (!activeCraftingArrangement.isEmpty())
-			craftingContext = PackageOrderWithCrafts.singleRecipe(activeCraftingArrangement.stream()
+		if (!activeCraftingArrangement.isEmpty()) {
+			int craftsRequested = Math.max(1, Mth.positiveCeilDiv(recipeOutput, recipeOutputPerCraft));
+			PackageOrder pattern = new PackageOrder(activeCraftingArrangement.stream()
 				.map(stack -> new BigItemStack(stack.copyWithCount(1)))
 				.toList());
+			craftingContext = new PackageOrderWithCrafts(PackageOrder.empty(),
+				List.of(new CraftingEntry(pattern, craftsRequested)));
+		}
 
 		// Collect request distributions
 		for (Entry<UUID, Collection<BigItemStack>> entry : asMap.entrySet()) {
@@ -643,6 +652,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		promisedSatisfied = false;
 		recipeAddress = "";
 		recipeOutput = 1;
+		recipeOutputPerCraft = 1;
 		setFilter(ItemStack.EMPTY);
 		blockEntity.notifyUpdate();
 	}
@@ -784,7 +794,8 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		panelTag.putUUID("Freq", network);
 		panelTag.putString("RecipeAddress", recipeAddress);
 		panelTag.putInt("PromiseClearingInterval", -1);
-		panelTag.putInt("RecipeOutput", 1);
+		panelTag.putInt("RecipeOutput", recipeOutput);
+		panelTag.putInt("RecipeOutputPerCraft", recipeOutputPerCraft);
 
 		if (panelBE().restocker)
 			panelTag.put("Promises", restockerPromises.write(registries));
@@ -813,6 +824,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		panelTag.put("TargetedByLinks", CatnipCodecUtils.encode(Codec.list(FactoryPanelConnection.CODEC), registries, new ArrayList<>(targetedByLinks.values())).orElseThrow());
 		panelTag.putString("RecipeAddress", recipeAddress);
 		panelTag.putInt("RecipeOutput", recipeOutput);
+		panelTag.putInt("RecipeOutputPerCraft", recipeOutputPerCraft);
 		panelTag.putInt("PromiseClearingInterval", promiseClearingInterval);
 		panelTag.putUUID("Freq", network);
 		panelTag.put("Craft", NBTHelper.writeItemList(activeCraftingArrangement, registries));
@@ -861,6 +873,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		activeCraftingArrangement = NBTHelper.readItemList(panelTag.getList("Craft", Tag.TAG_COMPOUND), registries);
 		recipeAddress = panelTag.getString("RecipeAddress");
 		recipeOutput = panelTag.getInt("RecipeOutput");
+		recipeOutputPerCraft = panelTag.contains("RecipeOutputPerCraft") ? panelTag.getInt("RecipeOutputPerCraft") : 1;
 
 		if (nbt.getBoolean("Restocker") && !clientPacket) {
 			restockerPromises = RequestPromiseQueue.read(panelTag.getCompound("Promises"), registries, () -> {

@@ -25,6 +25,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 	    ByteBufCodecs.map(HashMap::new, FactoryPanelPosition.STREAM_CODEC, ByteBufCodecs.INT), packet -> packet.inputAmounts,
 		ItemStack.OPTIONAL_LIST_STREAM_CODEC, packet -> packet.craftingArrangement,
 		ByteBufCodecs.VAR_INT, packet -> packet.outputAmount,
+		ByteBufCodecs.VAR_INT, packet -> packet.outputPerCraft,
 		ByteBufCodecs.VAR_INT, packet -> packet.promiseClearingInterval,
 		CatnipStreamCodecBuilders.nullable(FactoryPanelPosition.STREAM_CODEC), packet -> packet.removeConnection,
 		ByteBufCodecs.BOOL, packet -> packet.clearPromises,
@@ -38,6 +39,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 	private final Map<FactoryPanelPosition, Integer> inputAmounts;
 	private final List<ItemStack> craftingArrangement;
 	private final int outputAmount;
+	private final int outputPerCraft;
 	private final int promiseClearingInterval;
 	private final FactoryPanelPosition removeConnection;
 	private final boolean clearPromises;
@@ -45,7 +47,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 	private final boolean redstoneReset;
 
 	public FactoryPanelConfigurationPacket(FactoryPanelPosition position, String address,
-		Map<FactoryPanelPosition, Integer> inputAmounts, List<ItemStack> craftingArrangement, int outputAmount,
+		Map<FactoryPanelPosition, Integer> inputAmounts, List<ItemStack> craftingArrangement, int outputAmount, int outputPerCraft,
 		int promiseClearingInterval, @Nullable FactoryPanelPosition removeConnection, boolean clearPromises,
 		boolean reset, boolean sendRedstoneReset) {
 		super(position.pos());
@@ -54,6 +56,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 		this.inputAmounts = inputAmounts;
 		this.craftingArrangement = craftingArrangement;
 		this.outputAmount = outputAmount;
+		this.outputPerCraft = outputPerCraft;
 		this.promiseClearingInterval = promiseClearingInterval;
 		this.removeConnection = removeConnection;
 		this.clearPromises = clearPromises;
@@ -74,6 +77,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 
 		behaviour.recipeAddress = reset ? "" : address;
 		behaviour.recipeOutput = reset ? 1 : outputAmount;
+		behaviour.recipeOutputPerCraft = reset ? 1 : outputPerCraft;
 		behaviour.promiseClearingInterval = reset ? -1 : promiseClearingInterval;
 		behaviour.activeCraftingArrangement = reset ? List.of() : craftingArrangement;
 
