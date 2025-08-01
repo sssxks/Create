@@ -413,8 +413,9 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 			return;
 		}
 
-		boolean failed = false;
+		boolean craftingMode = !activeCraftingArrangement.isEmpty();
 
+		boolean failed = false;
 		Multimap<UUID, BigItemStack> toRequest = HashMultimap.create();
 		List<BigItemStack> toRequestAsList = new ArrayList<>();
 
@@ -424,8 +425,13 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 				return;
 
 			ItemStack item = source.getFilter();
-			int craftsRequested = Math.max(1, Mth.positiveCeilDiv(recipeOutput, recipeOutputPerCraft));
-			int amount = connection.amount * craftsRequested;
+			int amount;
+			if (craftingMode) {
+				int craftsRequested = Math.max(1, Mth.positiveCeilDiv(recipeOutput, recipeOutputPerCraft));
+				amount = connection.amount * craftsRequested;
+			} else {
+				 amount = connection.amount;
+			}
 			InventorySummary summary = LogisticsManager.getSummaryOfNetwork(source.network, true);
 			if (amount == 0 || item.isEmpty() || summary.getCountOf(item) < amount) {
 				sendEffect(connection.from, false);
@@ -448,7 +454,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		List<Multimap<PackagerBlockEntity, PackagingRequest>> requests = new ArrayList<>();
 
 		// Panel may enforce item arrangement
-		if (!activeCraftingArrangement.isEmpty()) {
+		if (craftingMode) {
 			int craftsRequested = Math.max(1, Mth.positiveCeilDiv(recipeOutput, recipeOutputPerCraft));
 			PackageOrder pattern = new PackageOrder(activeCraftingArrangement.stream()
 				.map(stack -> new BigItemStack(stack.copyWithCount(1)))

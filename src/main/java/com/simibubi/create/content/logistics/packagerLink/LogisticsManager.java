@@ -2,10 +2,12 @@ package com.simibubi.create.content.logistics.packagerLink;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -17,13 +19,16 @@ import com.google.common.cache.Cache;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.simibubi.create.content.logistics.BigItemStack;
+import com.simibubi.create.api.packager.InventoryIdentifier;
 import com.simibubi.create.content.logistics.packager.IdentifiedInventory;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import com.simibubi.create.content.logistics.packager.PackagingRequest;
+import com.simibubi.create.foundation.blockEntity.behaviour.inventory.InvManipulationBehaviour;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour.RequestType;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.foundation.utility.TickBasedCache;
+import net.neoforged.neoforge.items.IItemHandler;
 
 import net.createmod.catnip.data.Pair;
 import net.minecraft.world.item.ItemStack;
@@ -39,12 +44,27 @@ public class LogisticsManager {
 		try {
 			return (accurate ? LogisticsManager.ACCURATE_SUMMARIES : LogisticsManager.SUMMARIES).get(freqId, () -> {
 				InventorySummary summaryOfLinks = new InventorySummary();
+				Set<InventoryIdentifier> seenInventories = new HashSet<>();
+
 				LogisticallyLinkedBehaviour.getAllPresent(freqId, false)
 					.forEach(link -> {
 						InventorySummary summary = link.getSummary(null);
-						if (summary != InventorySummary.EMPTY)
-							summaryOfLinks.contributingLinks++;
-						summaryOfLinks.add(summary);
+						if (summary == InventorySummary.EMPTY)
+							return;
+
+						summaryOfLinks.contributingLinks++;
+
+						// Check if we've already seen this inventory to avoid duplication
+						PackagerBlockEntity packager = getPackagerFromLink(link);
+						if (packager == null) return;
+
+						InventoryIdentifier identifier = InventoryIdentifier.get(
+							packager.getLevel(), packager.targetInventory.getTarget().getOpposite());
+
+						if (!seenInventories.contains(identifier)) {
+							seenInventories.add(identifier);
+							summaryOfLinks.add(summary);
+						}
 					});
 				return summaryOfLinks;
 			});
@@ -55,11 +75,24 @@ public class LogisticsManager {
 	}
 
 	public static int getStockOf(UUID freqId, ItemStack stack, @Nullable IdentifiedInventory ignoredHandler) {
-		int sum = 0;
-		for (LogisticallyLinkedBehaviour link : LogisticallyLinkedBehaviour.getAllPresent(freqId, false))
-			sum += link.getSummary(ignoredHandler)
-				.getCountOf(stack);
-		return sum;
+		Set<InventoryIdentifier> seenInventories = new HashSet<>();
+		int totalStock = 0;
+		
+		for (LogisticallyLinkedBehaviour link : LogisticallyLinkedBehaviour.getAllPresent(freqId, false)) {
+			// Check if we've already seen this inventory to avoid duplication
+			PackagerBlockEntity packager = getPackagerFromLink(link);
+			if (packager == null) continue;
+			
+			InventoryIdentifier identifier = InventoryIdentifier.get(
+				packager.getLevel(), packager.targetInventory.getTarget().getOpposite());
+			
+			if (!seenInventories.contains(identifier)) {
+				seenInventories.add(identifier);
+				totalStock += link.getSummary(ignoredHandler).getCountOf(stack);
+			}
+		}
+		
+		return totalStock;
 	}
 
 	public static boolean broadcastPackageRequest(UUID freqId, RequestType type, PackageOrderWithCrafts order, @Nullable IdentifiedInventory ignoredHandler, String address) {
@@ -137,6 +170,14 @@ public class LogisticsManager {
 			}
 		}
 		return requests;
+	}
+
+	@Nullable
+	private static PackagerBlockEntity getPackagerFromLink(LogisticallyLinkedBehaviour link) {
+		if (link.blockEntity instanceof PackagerLinkBlockEntity plbe) {
+			return plbe.getPackager();
+		}
+		return null;
 	}
 
 	public static void performPackageRequests(Multimap<PackagerBlockEntity, PackagingRequest> requests) {
