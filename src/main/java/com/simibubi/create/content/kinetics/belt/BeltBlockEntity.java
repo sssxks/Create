@@ -34,6 +34,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -210,6 +211,12 @@ public class BeltBlockEntity extends KineticBlockEntity {
 		if (isController())
 			compound.put("Inventory", getInventory().write(registries));
 		super.write(compound, registries, clientPacket);
+	}
+
+	@Override
+	public void writeSafe(CompoundTag tag, Provider registries) {
+		write(tag, registries, false);
+		super.writeSafe(tag, registries);
 	}
 
 	@Override
