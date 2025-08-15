@@ -26,6 +26,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 		ItemStack.OPTIONAL_LIST_STREAM_CODEC, packet -> packet.craftingArrangement,
 		ByteBufCodecs.VAR_INT, packet -> packet.outputAmount,
 		ByteBufCodecs.VAR_INT, packet -> packet.outputPerCraft,
+		ByteBufCodecs.VAR_INT, packet -> packet.restockBatchSize,
 		ByteBufCodecs.VAR_INT, packet -> packet.promiseClearingInterval,
 		CatnipStreamCodecBuilders.nullable(FactoryPanelPosition.STREAM_CODEC), packet -> packet.removeConnection,
 		ByteBufCodecs.BOOL, packet -> packet.clearPromises,
@@ -40,6 +41,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 	private final List<ItemStack> craftingArrangement;
 	private final int outputAmount;
 	private final int outputPerCraft;
+	private final int restockBatchSize;
 	private final int promiseClearingInterval;
 	private final FactoryPanelPosition removeConnection;
 	private final boolean clearPromises;
@@ -48,7 +50,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 
 	public FactoryPanelConfigurationPacket(FactoryPanelPosition position, String address,
 		Map<FactoryPanelPosition, Integer> inputAmounts, List<ItemStack> craftingArrangement, int outputAmount, int outputPerCraft,
-		int promiseClearingInterval, @Nullable FactoryPanelPosition removeConnection, boolean clearPromises,
+		int restockBatchSize, int promiseClearingInterval, @Nullable FactoryPanelPosition removeConnection, boolean clearPromises,
 		boolean reset, boolean sendRedstoneReset) {
 		super(position.pos());
 		this.position = position;
@@ -57,6 +59,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 		this.craftingArrangement = craftingArrangement;
 		this.outputAmount = outputAmount;
 		this.outputPerCraft = outputPerCraft;
+		this.restockBatchSize = restockBatchSize;
 		this.promiseClearingInterval = promiseClearingInterval;
 		this.removeConnection = removeConnection;
 		this.clearPromises = clearPromises;
@@ -78,6 +81,7 @@ public class FactoryPanelConfigurationPacket extends BlockEntityConfigurationPac
 		behaviour.recipeAddress = reset ? "" : address;
 		behaviour.recipeOutput = reset ? 1 : outputAmount;
 		behaviour.recipeOutputPerCraft = reset ? 1 : outputPerCraft;
+		behaviour.restockBatchSize = reset ? 1 : restockBatchSize;
 		behaviour.promiseClearingInterval = reset ? -1 : promiseClearingInterval;
 		behaviour.activeCraftingArrangement = reset ? List.of() : craftingArrangement;
 

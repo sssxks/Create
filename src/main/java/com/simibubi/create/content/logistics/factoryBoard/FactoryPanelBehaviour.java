@@ -106,6 +106,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 	public String recipeAddress;
 	public int recipeOutput;
 	public int recipeOutputPerCraft = 1;
+	public int restockBatchSize;
 	public LerpedFloat bulb;
 	public PanelSlot slot;
 	public int promiseClearingInterval;
@@ -136,6 +137,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		this.activeCraftingArrangement = List.of();
 		this.recipeAddress = "";
 		this.recipeOutput = 1;
+		this.restockBatchSize = 1;
 		this.active = false;
 		this.forceClearPromises = false;
 		this.redstonePowered = false;
@@ -510,7 +512,18 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		int promised = getPromised();
 		int maxStackSize = item.getMaxStackSize();
 		int demand = getAmount() * (upTo ? 1 : maxStackSize);
-		int amountToOrder = Math.clamp(demand - promised - inStorage, 0, maxStackSize * 9);
+		int deficit = demand - promised - inStorage;
+		if (deficit <= 0) {
+			sendEffect(getPanelPosition(), false);
+			return;
+		}
+		int batch = Math.max(1, restockBatchSize);
+		int rounded = Mth.positiveCeilDiv(deficit, batch) * batch;
+		int amountToOrder = Mth.clamp(rounded, 0, maxStackSize * 9);
+		if (amountToOrder <= 0) {
+			sendEffect(getPanelPosition(), false);
+			return;
+		}
 
 		BigItemStack orderedItem = new BigItemStack(item, Math.min(amountToOrder, availableOnNetwork));
 		PackageOrderWithCrafts order = PackageOrderWithCrafts.simple(List.of(orderedItem));
@@ -659,6 +672,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		recipeAddress = "";
 		recipeOutput = 1;
 		recipeOutputPerCraft = 1;
+		restockBatchSize = 1;
 		setFilter(ItemStack.EMPTY);
 		blockEntity.notifyUpdate();
 	}
@@ -802,6 +816,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		panelTag.putInt("PromiseClearingInterval", -1);
 		panelTag.putInt("RecipeOutput", recipeOutput);
 		panelTag.putInt("RecipeOutputPerCraft", recipeOutputPerCraft);
+		panelTag.putInt("RestockBatch", restockBatchSize);
 
 		if (panelBE().restocker)
 			panelTag.put("Promises", restockerPromises.write(registries));
@@ -834,6 +849,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		panelTag.putInt("PromiseClearingInterval", promiseClearingInterval);
 		panelTag.putUUID("Freq", network);
 		panelTag.put("Craft", NBTHelper.writeItemList(activeCraftingArrangement, registries));
+		panelTag.putInt("RestockBatch", restockBatchSize);
 
 		if (panelBE().restocker && !clientPacket)
 			panelTag.put("Promises", restockerPromises.write(registries));
@@ -880,6 +896,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 		recipeAddress = panelTag.getString("RecipeAddress");
 		recipeOutput = panelTag.getInt("RecipeOutput");
 		recipeOutputPerCraft = panelTag.contains("RecipeOutputPerCraft") ? panelTag.getInt("RecipeOutputPerCraft") : 1;
+		restockBatchSize = panelTag.contains("RestockBatch") ? panelTag.getInt("RestockBatch") : 1;
 
 		if (nbt.getBoolean("Restocker") && !clientPacket) {
 			restockerPromises = RequestPromiseQueue.read(panelTag.getCompound("Promises"), registries, () -> {

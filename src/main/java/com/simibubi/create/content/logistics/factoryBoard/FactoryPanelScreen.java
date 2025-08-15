@@ -70,6 +70,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 	private boolean craftingActive;
 	private List<BigItemStack> craftingIngredients;
 	private int singleCraftOutputCount; // how many outputs one craft produces
+	private int restockBatchSize; // restocker batch size (client-side state)
 
 	public FactoryPanelScreen(FactoryPanelBehaviour behaviour) {
 		this.behaviour = behaviour;
@@ -77,6 +78,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 		restocker = behaviour.panelBE().restocker;
 		availableCraftingRecipe = null;
 		craftingActive = !behaviour.activeCraftingArrangement.isEmpty();
+		restockBatchSize = behaviour.restockBatchSize;
 		updateConfigs();
 	}
 
@@ -293,7 +295,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 		}
 
 		if (restocker)
-			renderInputItem(graphics, slot, new BigItemStack(behaviour.getFilter(), 1), mouseX, mouseY);
+			renderInputItem(graphics, slot, new BigItemStack(behaviour.getFilter(), restockBatchSize), mouseX, mouseY);
 
 		if (!restocker) {
 			int outputX = x + 160;
@@ -438,6 +440,8 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 		graphics.renderItem(itemStack.stack, inputX, inputY);
 		if (!restocker && !itemStack.stack.isEmpty())
 			graphics.renderItemDecorations(font, itemStack.stack, inputX, inputY, itemStack.count + "");
+		if (restocker && !itemStack.stack.isEmpty())
+			graphics.renderItemDecorations(font, itemStack.stack, inputX, inputY, restockBatchSize + "");
 
 		if (mouseX < inputX - 2 || mouseX >= inputX - 2 + 20 || mouseY < inputY - 2 || mouseY >= inputY - 2 + 20)
 			return;
@@ -471,8 +475,13 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 		if (restocker) {
 			graphics.renderComponentTooltip(font,
 				List.of(CreateLang.translate("gui.factory_panel.sending_item", CreateLang.itemName(itemStack.stack)
+							.add(CreateLang.text(" x" + restockBatchSize))
 							.string())
 						.color(ScrollInput.HEADER_RGB)
+						.component(),
+					CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+						.style(ChatFormatting.DARK_GRAY)
+						.style(ChatFormatting.ITALIC)
 						.component(),
 					CreateLang.translate("gui.factory_panel.sending_item_tip")
 						.style(ChatFormatting.GRAY)
@@ -678,6 +687,20 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 			}
 		}
 
+		// Restocker: scroll on the single input slot adjusts batch size
+		if (restocker) {
+			ItemStack filter = behaviour.getFilter();
+			if (!filter.isEmpty()) {
+				int inputX = x + 88;
+				int inputY = y + 12;
+				if (mouseX >= inputX && mouseX < inputX + 16 && mouseY >= inputY && mouseY < inputY + 16) {
+					int max = filter.getMaxStackSize() * 9;
+					restockBatchSize = Mth.clamp(restockBatchSize + delta, 1, max);
+					return true;
+				}
+			}
+		}
+
 		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
@@ -708,7 +731,7 @@ public class FactoryPanelScreen extends AbstractSimiScreen {
 		String address = addressBox.getValue();
 
 		FactoryPanelConfigurationPacket packet = new FactoryPanelConfigurationPacket(pos, address, inputs,
-			craftingArrangement, outputConfig.count, singleCraftOutputCount, promiseExp, toRemove, clearPromises, sendReset, sendRedstoneReset);
+			craftingArrangement, outputConfig.count, singleCraftOutputCount, restockBatchSize, promiseExp, toRemove, clearPromises, sendReset, sendRedstoneReset);
 		CatnipServices.NETWORK.sendToServer(packet);
 	}
 
